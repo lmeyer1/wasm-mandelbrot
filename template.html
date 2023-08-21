@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Simple template</title>
+  </head>
+  <body>
+	<script>
+const memory = new WebAssembly.Memory({ initial: 10, maximum: 10 })
+var importObject = {
+  js: {
+    mem: memory,
+  },
+  console: {log: function (id, value) {
+	console.log('@'+id+':', value)
+  }}
+};
+fetch("mandelbrot.wasm")
+  .then((response) => response.arrayBuffer())
+  .then((bytes) => WebAssembly.instantiate(bytes, importObject))
+  .then((results) => {
+    results.instance.exports.mandelbrot()
+	const canvas = document.getElementById("canvas");
+	const ctx = canvas.getContext("2d");
+	const imageArray = new Uint8ClampedArray(memory.buffer, 0, 256*256*4)
+	console.log(imageArray)
+	const image = new ImageData(imageArray, 256, 256)
+	console.log(image)
+	ctx.putImageData(image, 0, 0)
+  });
+	</script>
+	<canvas id="canvas" width="256" height="256">
+  </body>
+</html>
