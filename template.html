@@ -1,34 +1,44 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Simple template</title>
-  </head>
-  <body>
-	<script>
-const memory = new WebAssembly.Memory({ initial: 10, maximum: 10 })
-var importObject = {
-  js: {
-    mem: memory,
-  },
-  console: {log: function (id, value) {
-	console.log('@'+id+':', value)
-  }}
-};
-fetch("mandelbrot.wasm")
+	<head>
+		<meta charset="utf-8">
+		<title>Simple template</title>
+	</head>
+	<body>
+		<script>
+
+var wasm_bytes, wasm_instance, ctx, imageArray, width, height
+wasm_bytes = fetch("mandelbrot.wasm")
   .then((response) => response.arrayBuffer())
-  .then((bytes) => WebAssembly.instantiate(bytes, importObject))
-  .then((results) => {
-    results.instance.exports.mandelbrot()
+document.addEventListener("DOMContentLoaded", function(event) {
 	const canvas = document.getElementById("canvas");
-	const ctx = canvas.getContext("2d");
-	const imageArray = new Uint8ClampedArray(memory.buffer, 0, 256*256*4)
+	width = canvas.width
+	height = canvas.height
+	const memsize = width * height * 4, memchunks = Math.ceil(memsize / 0x10000)
+	const memory = new WebAssembly.Memory({ initial: memchunks, maximum: memchunks })
+	var importObject = {
+		js: {
+			mem: memory,
+		},
+		console: {log: function (value) {
+			console.log(value)
+		}}
+	};
+	wasm_bytes.then((bytes) => WebAssembly.instantiate(bytes, importObject))
+		.then((results) => {
+			wasm_instance = results.instance
+			console.log(width, height)
+			wasm_instance.exports.mandelbrot(width, height)
+		})
+	ctx = canvas.getContext("2d");
+	imageArray = new Uint8ClampedArray(memory.buffer, 0, width * height * 4)
 	console.log(imageArray)
-	const image = new ImageData(imageArray, 256, 256)
-	console.log(image)
-	ctx.putImageData(image, 0, 0)
-  });
-	</script>
-	<canvas id="canvas" width="256" height="256">
-  </body>
+});
+function updateCanvas() {
+	ctx.putImageData(new ImageData(imageArray, width, height), 0, 0)
+}
+setInterval(function(){updateCanvas()}, 500)
+		</script>
+		<canvas id="canvas" width="500" height="350">
+	</body>
 </html>
